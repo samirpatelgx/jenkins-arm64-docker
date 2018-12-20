@@ -1,6 +1,14 @@
-FROM arm64v8/openjdk:8-jdk
+FROM openjdk:8-jdk-slim
 
-RUN apt-get update && apt-get install -y git curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git curl gpg && rm -rf /var/lib/apt/lists/*
+
+# Disable assistive technologies since openjdk:slim installs headless JDK (without assistive technologies).
+# JFreeChart initialization fails unless assistive technologies are disabled.
+# Broken JFreeChart causes failures rendering trend graphs.
+# Seems like a configuration error in openjdk:8-jdk-slim, headless JDK inconsistent with assistive technologies.
+# Upstream OpenJDK pull request: https://github.com/docker-library/openjdk/pull/189
+# Upstream Debian slim bug report: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=896907
+RUN sed -i 's/assistive_technologies=.*/assistive_technologies=/g' /etc/java-8-openjdk/accessibility.properties
 
 ARG user=jenkins
 ARG group=jenkins
@@ -44,10 +52,10 @@ COPY init.groovy /usr/share/jenkins/ref/init.groovy.d/tcp-slave-agent-port.groov
 
 # jenkins version being bundled in this docker image
 ARG JENKINS_VERSION
-ENV JENKINS_VERSION ${JENKINS_VERSION:-2.150.1}
+ENV JENKINS_VERSION ${JENKINS_VERSION:-2.121.2}
 
 # jenkins.war checksum, download will be validated using it
-ARG JENKINS_SHA=5bb075b81a3929ceada4e960049e37df5f15a1e3cfc9dc24d749858e70b48919
+ARG JENKINS_SHA=da0f9d106e936246841a898471783fb4fbdbbacc8d42a156b7306a0855189602
 
 # Can be used to customize where jenkins.war get downloaded from
 ARG JENKINS_URL=https://repo.jenkins-ci.org/public/org/jenkins-ci/main/jenkins-war/${JENKINS_VERSION}/jenkins-war-${JENKINS_VERSION}.war
